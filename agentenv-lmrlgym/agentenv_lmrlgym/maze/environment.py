@@ -1,6 +1,6 @@
 from .utils import setup_maze_env
 from LLM_RL.environment import Text
-
+import threading
 
 class Lmrlgym_MazeEnv:
     def __init__(self):
@@ -8,12 +8,15 @@ class Lmrlgym_MazeEnv:
         self.env = {}
         self.info = {}
         self.available_actions = ["move left", "move right", "move up", "move down"]
+        self._lock = threading.Lock()
 
     def create(self):
-        idx = self._max_id
+        with self._lock:
+            idx = self._max_id
+            self._max_id += 1
         try:
             payload = {
-                "id": self._max_id,
+                "id": idx,
             }
             self.info[idx] = {
                 "done": False,
@@ -21,7 +24,6 @@ class Lmrlgym_MazeEnv:
                 "deleted": False,
             }
             print(f"-------Env {idx} created--------")
-            self._max_id += 1
         except Exception as e:
             payload = {"error": str(e)}
         return payload

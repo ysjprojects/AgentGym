@@ -38,7 +38,7 @@ webshop --port 36001
 
 前文创建的 `webshop` Conda 环境仅用于启动 WebShop 环境服务器。而其他代码可以在自己常用的环境中运行，也就是您安装 `agentenv` 包的环境。
 
-请参考 `examples/basic/eval_agentlm_webshop.py`。
+请参考 `examples/basic/base_eval.py` 或 `examples/basic/openai_eval.py`
 
 ```python
 # Evaluate AgentLM-7B on WebShop task.

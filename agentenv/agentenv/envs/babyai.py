@@ -1,7 +1,9 @@
 from typing import Any, Mapping
 import requests
+import re
 from requests.exceptions import RequestException
-from agentenv.controller import BaseEnvClient, BaseTask, ConversationMessage, StepOutput
+from agentenv.controller import BaseEnvClient, BaseTask
+from agentenv.controller.types import ConversationMessage, StepOutput
 
 
 class BabyAIEnvClient(BaseEnvClient):
@@ -62,13 +64,16 @@ class BabyAIEnvClient(BaseEnvClient):
         return self.info["observation"]
 
     def step(self, action: str) -> StepOutput:
-        if action.endswith("</s>"):
-            action = action[:-5]
-        _action = action.split("Action:")
-        if len(_action) > 1:
-            action = _action[1].strip()
-        else:
-            action = _action[0].strip()
+        action_matches = re.findall(r"Action:\s*(.*?)(?=\n|$)", action, re.DOTALL)
+        if len(action_matches) > 1:
+            return StepOutput(
+                state="Error: Only one 'Action' is allowed per response. Please adjust your response.",
+                reward=0,
+                done=False,
+            )
+        action = action_matches[-1] if action_matches else ""
+        action = re.sub(r"[^A-Za-z0-9, ]+", "", action)
+        action = " ".join(action.split()).strip()
         response = self._post("step", {"action": action})
         self.info = {
             "observation": response["observation"],
@@ -92,6 +97,9 @@ class BabyAIEnvClient(BaseEnvClient):
         }
         return response
 
+    def close(self):
+        response = self._post("close",{})
+        return response
 
 class BabyAITask(BaseTask):
     env_client_cls = BabyAIEnvClient

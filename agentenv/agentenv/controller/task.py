@@ -1,36 +1,9 @@
-from dataclasses import dataclass
-from typing import Any, Callable, Mapping, Optional, Sequence, TypedDict
+from typing import Any, Callable, Mapping, Optional, Sequence
 
-import torch
-from torch.nn.parallel import DistributedDataParallel
-from transformers import GenerationConfig, PreTrainedModel, PreTrainedTokenizerBase
-from transformers.generation.utils import GenerateOutput
+from transformers import GenerationConfig
 
-from agentenv.controller import BaseEnvClient
-
-ConversationMessage = TypedDict(
-    "ConversationMessage", {"from": str, "loss": Optional[bool], "value": str}
-)
-
-
-@dataclass
-class ExperienceOutput:
-    conversation: list[ConversationMessage]
-    reward: float
-    text: str
-    seq_ids: list[int]
-    attention_mask: list[int]
-    action_mask: list[int]
-
-
-TokenizedConversationOutput = TypedDict(
-    "TokenizedConversationOutput",
-    {
-        "text": str,
-        "input_ids": list[int],
-        "action_mask": list[int],
-    },
-)
+from . import Agent, APIAgent, BaseEnvClient
+from .types import ConversationMessage, APIConversationMessage, ExperienceOutput, APIExperienceOutput
 
 
 class BaseTask:
@@ -54,62 +27,9 @@ class BaseTask:
         self.clients = [self.env_client_cls(**client_args) for _ in range(n_clients)]
         self.len = len(self.clients[0])
 
-    def _tokenize_conversation_one(
-        self,
-        message: ConversationMessage,
-        tokenizer: PreTrainedTokenizerBase,
-    ) -> TokenizedConversationOutput:
-        """
-        This function applied Llama Chat template on the given vicuna-styled conversation message.
-        You can provide your own _tokenize_conversation_one to adapt to your own task.
-        """
-        if message["from"] == "human":
-            text = f"<s>[INST] {message['value']} [/INST]"
-            input_ids = tokenizer.encode(text, add_special_tokens=False)
-        else:
-            text = f"{message['value']}</s>"
-            input_ids = tokenizer.encode(text, add_special_tokens=False)
-            text = f" {text}"
-        if message["loss"]:
-            action_mask = [1] * len(input_ids)
-        else:
-            action_mask = [0] * len(input_ids)
-
-        return TokenizedConversationOutput(
-            {
-                "text": text,
-                "input_ids": input_ids,
-                "action_mask": action_mask,
-            }
-        )
-
-    def _tokenize_conversation(
-        self,
-        conversation: list[ConversationMessage],
-        tokenizer: PreTrainedTokenizerBase,
-    ) -> TokenizedConversationOutput:
-        text = ""
-        input_ids = []
-        action_mask = []
-
-        for message in conversation:
-            message_out = self._tokenize_conversation_one(message, tokenizer)
-            text += message_out["text"]
-            input_ids += message_out["input_ids"]
-            action_mask += message_out["action_mask"]
-
-        return TokenizedConversationOutput(
-            {
-                "text": text,
-                "input_ids": input_ids,
-                "action_mask": action_mask,
-            }
-        )
-
     def _generate_experience_one(
         self,
-        model: PreTrainedModel,
-        tokenizer: PreTrainedTokenizerBase,
+        agent: Agent | APIAgent,
         client: BaseEnvClient,
         idx: int,
         generation_config: Optional[GenerationConfig] = None,
@@ -119,44 +39,62 @@ class BaseTask:
         reward = 0.0
         done = False
         state = client.observe()
-        conversation = list(client.conversation_start)
-        conversation.append(
-            ConversationMessage({"from": "human", "loss": None, "value": state})
-        )
-        conversation_tokenized = self._tokenize_conversation(conversation, tokenizer)
+        if isinstance(agent, Agent):
+            tokenizer = agent.tokenizer
+            conversation = list(client.conversation_start)
+            conversation.append(
+                ConversationMessage({"from": "human", "loss": None, "value": state})
+            )
+            conversation_tokenized = agent.chat_template.tokenize_conversation(
+                conversation, tokenizer, add_generation_prompt=True
+            )
+        elif isinstance(agent, APIAgent):
+            conversation = [APIConversationMessage({"role": "user", "content": client.conversation_start[0]["value"], "reasoning_content": None}),
+                            APIConversationMessage({"role": "assistant", "content": client.conversation_start[1]["value"], "reasoning_content": None}),
+                            APIConversationMessage({"role": "user", "content": state, "reasoning_content": None})]
+        else:
+            raise NotImplementedError
         rounds = 0
 
         while not done:
-            input_length = len(conversation_tokenized["input_ids"])
-            # if input_length exceeds 4096, break
-            if input_length > 4096:
-                break
-            output = model.generate(
-                torch.tensor(
-                    [conversation_tokenized["input_ids"]], device=model.device
-                ),
-                generation_config=generation_config,
-            )
-            if isinstance(output, GenerateOutput):
-                output = output.sequences
+            if isinstance(agent, Agent):
+                input_length = len(conversation_tokenized["input_ids"])
+                # if input_length exceeds max_length, break
+                if input_length >= (generation_config.max_length or 4096):
+                    break
+                try:
+                    generated_tokens = agent.generate(
+                        [conversation_tokenized["input_ids"]], generation_config
+                    )[0]
+                except Exception as e:  # pylint: disable=W0718:broad-exception-caught
+                    print(e)
+                    break  # break if generate method raises exceptions
 
-            generated_tokens = output[0][input_length:].cpu().numpy().tolist()
-            if generated_tokens[-1] != tokenizer.eos_token_id:
-                generated_tokens += [tokenizer.eos_token_id]
+                if generated_tokens[-1] != tokenizer.eos_token_id:
+                    generated_tokens += [tokenizer.eos_token_id]
 
-            generated_text = tokenizer.decode(generated_tokens)
-            conversation_tokenized["text"] += f" {generated_text}"
-            conversation_tokenized["input_ids"] += generated_tokens
-            conversation_tokenized["action_mask"] += [1] * len(generated_tokens)
+                generated_text = tokenizer.decode(generated_tokens)
+                conversation_tokenized["text"] += f" {generated_text}"
+                conversation_tokenized["input_ids"] += generated_tokens
+                conversation_tokenized["action_mask"] += [1] * len(generated_tokens)
 
-            generated_text = generated_text[
-                : -len(tokenizer.eos_token)
-            ]  # not endswith eos_token
-            conversation.append(
-                ConversationMessage(
-                    {"from": "gpt", "loss": True, "value": generated_text}
+                generated_text = generated_text[
+                    : -len(tokenizer.eos_token)
+                ]  # not endswith eos_token
+                conversation.append(
+                    ConversationMessage(
+                        {"from": "gpt", "loss": True, "value": generated_text}
+                    )
                 )
-            )
+            elif isinstance(agent, APIAgent):
+                generated_text, generated_reasoning_text = agent.generate(conversation)
+                conversation.append(
+                    APIConversationMessage(
+                        {"role": "assistant", "content": generated_text, "reasoning_content": generated_reasoning_text}
+                    )
+                )
+            else:
+                raise NotImplementedError
 
             step_output = client.step(generated_text)
             state, reward, done = (
@@ -164,57 +102,74 @@ class BaseTask:
                 step_output.reward,
                 step_output.done,
             )
-            env_message = ConversationMessage(
-                {"from": "human", "loss": None, "value": state}
-            )
-            env_message_tokenized = self._tokenize_conversation_one(
-                env_message, tokenizer
-            )
 
-            conversation.append(env_message)
-            conversation_tokenized["text"] += env_message_tokenized["text"]
-            conversation_tokenized["input_ids"] += env_message_tokenized["input_ids"]
-            conversation_tokenized["action_mask"] += env_message_tokenized[
-                "action_mask"
-            ]
+            if isinstance(agent, Agent):
+                env_message = ConversationMessage(
+                    {"from": "human", "loss": None, "value": state}
+                )
+                env_message_tokenized = agent.chat_template.tokenize_conversation_one(
+                    env_message, tokenizer, add_generation_prompt=True
+                )
+
+                conversation.append(env_message)
+                conversation_tokenized["text"] += env_message_tokenized["text"]
+                conversation_tokenized["input_ids"] += env_message_tokenized["input_ids"]
+                conversation_tokenized["action_mask"] += env_message_tokenized[
+                    "action_mask"
+                ]
+            elif isinstance(agent, APIAgent):
+                conversation.append(
+                    APIConversationMessage(
+                        {"role": "user", "content": state, "reasoning_content": None}
+                    )
+                )
+            else:
+                raise NotImplementedError
 
             rounds += 1
             if max_rounds is not None and rounds >= max_rounds:
                 break
 
-        return ExperienceOutput(
-            conversation=conversation,
-            reward=reward,
-            text=conversation_tokenized["text"],
-            seq_ids=conversation_tokenized["input_ids"],
-            attention_mask=[1] * len(conversation_tokenized["input_ids"]),
-            action_mask=conversation_tokenized["action_mask"],
-        )
+        if isinstance(agent, Agent):
+            return ExperienceOutput(
+                conversation=conversation,
+                reward=reward,
+                text=conversation_tokenized["text"],
+                seq_ids=conversation_tokenized["input_ids"],
+                attention_mask=[1] * len(conversation_tokenized["input_ids"]),
+                action_mask=conversation_tokenized["action_mask"],
+            )
+        elif isinstance(agent, APIAgent):
+            return APIExperienceOutput(
+                conversation=conversation,
+                reward=reward,
+            )
+        else:
+            raise NotImplementedError
 
     def _generate_experience_batch(
         self,
-        model: PreTrainedModel,
-        tokenizer: PreTrainedTokenizerBase,
+        agent: Agent | APIAgent,
         idxs: Sequence[int],
         generation_config: Optional[GenerationConfig] = None,
         max_rounds: Optional[int] = None,
     ) -> list[ExperienceOutput]:
-        # TODO: "Batch experience generation is not implemented. Generate one by one.",
         client = self.clients[0]
-        result = [self._generate_experience_one(
-                    model=model,
-                    tokenizer=tokenizer,
-                    client=client,
-                    idx=idx,
-                    generation_config=generation_config,
-                    max_rounds=max_rounds,
-                ) for idx in idxs]
+        result = [
+            self._generate_experience_one(
+                agent=agent,
+                client=client,
+                idx=idx,
+                generation_config=generation_config,
+                max_rounds=max_rounds,
+            )
+            for idx in idxs
+        ]
         return result
 
     def generate_experience(
         self,
-        model: PreTrainedModel,
-        tokenizer: PreTrainedTokenizerBase,
+        agent: Agent | APIAgent,
         idxs: Sequence[int] | int,
         generation_config: Optional[GenerationConfig] = None,
         max_rounds: Optional[int] = None,
@@ -222,12 +177,8 @@ class BaseTask:
         if isinstance(idxs, int):
             idxs = [idxs]
 
-        if isinstance(model, DistributedDataParallel):
-            model = model.module
-
         return self._generate_experience_batch(
-            model=model,
-            tokenizer=tokenizer,
+            agent=agent,
             idxs=idxs,
             generation_config=generation_config,
             max_rounds=max_rounds,

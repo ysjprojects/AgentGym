@@ -2,7 +2,7 @@ import os
 from LLM_RL.environment import Text
 from llm_rl_scripts.wordle.env.env import ReformatWordleEnvironment, WordleEnvironment
 from llm_rl_scripts.wordle.env.game import Vocabulary
-
+import threading
 vocab_base = os.path.abspath(
     os.path.join(
         os.path.dirname(os.path.realpath(__file__)),
@@ -21,18 +21,20 @@ class Lmrlgym_WordleEnv:
         self._max_id = 0
         self.env = {}
         self.info = {}
+        self._lock = threading.Lock()
 
     def create(self):
-        idx = self._max_id
+        with self._lock:
+            idx = self._max_id
+            self._max_id += 1
         try:
             # vocab = Vocabulary.from_file(os.path.join(vocab_base, f"{vocab_file}.txt"))
             vocab = Vocabulary.from_file(os.path.join(vocab_base, "tweet_words.txt"))
             new_env = ReformatWordleEnvironment(WordleEnvironment(vocab))
-            payload = {"id": self._max_id}
+            payload = {"id": idx}
             self.env[idx] = new_env
             self.info[idx] = {"done": False, "reward": 0, "deleted": False}
             print(f"-------Env {idx} created--------")
-            self._max_id += 1
         except Exception as e:
             payload = {"error": str(e)}
         return payload

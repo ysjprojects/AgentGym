@@ -8,6 +8,7 @@ from environment.todo_env import TodoEnv
 from utils.tool.data_utils import ToolDataset
 from utils.tool.helpers import extract_action_name_and_action_input
 from copy import deepcopy
+import threading
 def clean_answer(answer):
     # remove all "id" in observation
     new_answer = deepcopy(answer)
@@ -44,9 +45,12 @@ class TodoEnvServer:
         self.env = {}
         dataset_path = "Toolusage/data/todo.jsonl"
         self.dataset = ToolDataset(test_file=dataset_path)
+        self._lock = threading.Lock()
 
     def create(self, id: int = 0) -> int:
-        env_idx = self._max_id
+        with self._lock:
+            env_idx = self._max_id
+            self._max_id += 1
         dataset = self.dataset
         dataset_i = dict()
         dataset_i["goal"] = dataset.goals[id]
@@ -54,12 +58,11 @@ class TodoEnvServer:
         dataset_i["ground_truth_subgoals"] = dataset.ground_truth_subgoals[id]
         dataset_i["tool"] = dataset.tools[id]
 
-        self.env[self._max_id] = TodoEnv(dataset=dataset_i)
-        self.env[self._max_id].todo_toolkits.current_date = self.dataset.init_configs[id]["current_date"]
-        self.env[self._max_id].todo_toolkits.current_location = (
+        self.env[env_idx] = TodoEnv(dataset=dataset_i)
+        self.env[env_idx].todo_toolkits.current_date = self.dataset.init_configs[id]["current_date"]
+        self.env[env_idx].todo_toolkits.current_location = (
             self.dataset.init_configs[id]["current_location"]
         )
-        self._max_id += 1
         return env_idx
 
     def reset(self, env_idx, id: Optional[int] = None):

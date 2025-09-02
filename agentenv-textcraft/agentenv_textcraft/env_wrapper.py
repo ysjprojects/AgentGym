@@ -1,22 +1,27 @@
 from .environment import TextCraftEnv
 from .crafting_tree import CraftingTree
-
+import threading
 
 class TextCraft_Wrapper:
     def __init__(self, minecraft_dir="agentenv_textcraft/"):
         self._max_id = 0
         self.env = {}  # dict[id, env_item]
         self.info = {}  # dict[id, env_info]
+        self.ls = []
         self.crafting_tree = CraftingTree(minecraft_dir=minecraft_dir)
+        self._lock = threading.Lock()
 
     def create(self, commands: str = None, goal: str = None):
         try:
-            id = self._max_id
+            with self._lock:
+                id = self._max_id
+                self._max_id += 1
             new_env = TextCraftEnv(
                 crafting_tree=self.crafting_tree, commands=commands, goal=goal
             )
             ob, _ = new_env.reset(data_idx=id)
             print(f"-------Env {id} created--------")
+            self.ls.append(id)
             payload = {"id": id, "observation": ob, "done": False, "reward": 0}
             self.env[id] = new_env
             self.info[id] = {
@@ -25,7 +30,6 @@ class TextCraft_Wrapper:
                 "reward": 0,
                 "deleted": False,
             }
-            self._max_id += 1
         except Exception as e:
             payload = {"error": f"{e}"}
         return payload
@@ -71,5 +75,26 @@ class TextCraft_Wrapper:
             raise NameError(f"The id {id} is not valid.")
         if self.info[id]["deleted"]:
             raise NameError(f"The task with environment {id} has been deleted.")
+        
+    def close(self, id):
+        try:
+            self.ls.remove(id)
+            self.env[id].close() 
+            del self.info[id] 
+            del self.env[id] 
+            print(f"-------Env {id} closed--------")
+            return True
+        except KeyError:
+            print(f"--------Env {id} not exist--------")
+            return False
+        except Exception as e:
+            print(f"Error while closing Env {id}: {e}")
+            return False
+    
+    
+    def __del__(self):
+        for idx in self.ls:
+            self.env[idx].close()
+            print(f"-------Env {idx} closed--------")
 
 server = TextCraft_Wrapper()

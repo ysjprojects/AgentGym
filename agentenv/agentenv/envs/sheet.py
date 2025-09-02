@@ -3,7 +3,8 @@ from typing import Any, Mapping, Dict
 import requests
 from requests.exceptions import RequestException
 
-from agentenv.controller import BaseEnvClient, BaseTask, ConversationMessage, StepOutput
+from agentenv.controller import BaseEnvClient, BaseTask
+from agentenv.controller.types import ConversationMessage, StepOutput
 
 
 class SheetEnvClient(BaseEnvClient):

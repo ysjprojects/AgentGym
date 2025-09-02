@@ -7,7 +7,7 @@ from typing import Optional
 from environment.weather_env import WeatherEnv
 from utils.tool.data_utils import ToolDataset
 from utils.tool.helpers import extract_action_name_and_action_input
-
+import threading
 
 class WeatherEnvServer:
     """
@@ -19,9 +19,12 @@ class WeatherEnvServer:
         self.env = {}
         dataset_path = "Toolusage/data/weather.jsonl"
         self.dataset = ToolDataset(test_file=dataset_path)
+        self._lock = threading.Lock()
 
     def create(self, id: int = 0) -> int:
-        env_idx = self._max_id
+        with self._lock:
+            env_idx = self._max_id
+            self._max_id += 1
         dataset = self.dataset
         dataset_i = dict()
         dataset_i["goal"] = dataset.goals[id]
@@ -31,8 +34,7 @@ class WeatherEnvServer:
         dataset_i["current_date"] = dataset.init_configs[id]["current_date"]
         dataset_i["current_location"] = dataset.init_configs[id]["current_location"]
 
-        self.env[self._max_id] = WeatherEnv(dataset=dataset_i)
-        self._max_id += 1
+        self.env[env_idx] = WeatherEnv(dataset=dataset_i)
         return env_idx
 
     def reset(self, env_idx, id: Optional[int] = None):

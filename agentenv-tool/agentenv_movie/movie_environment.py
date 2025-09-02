@@ -8,7 +8,7 @@ from environment.movie_env import MovieEnv
 from utils.tool.data_utils import ToolDataset
 from utils.tool.helpers import extract_action_name_and_action_input
 import time
-
+import threading
 
 class MovieEnvServer:
     """
@@ -20,9 +20,12 @@ class MovieEnvServer:
         self.env = {}
         dataset_path = "Toolusage/data/movie.jsonl"
         self.dataset = ToolDataset(test_file=dataset_path)
+        self._lock = threading.Lock()
 
     def create(self, id: int = 0) -> int:
-        env_idx = self._max_id
+        with self._lock:
+            env_idx = self._max_id
+            self._max_id += 1
         dataset = self.dataset
         dataset_i = dict()
         dataset_i["goal"] = dataset.goals[id]
@@ -30,8 +33,7 @@ class MovieEnvServer:
         dataset_i["ground_truth_subgoals"] = dataset.ground_truth_subgoals[id]
         dataset_i["tool"] = dataset.tools[id]
 
-        self.env[self._max_id] = MovieEnv(dataset=dataset_i)
-        self._max_id += 1
+        self.env[env_idx] = MovieEnv(dataset=dataset_i)
         return env_idx
 
     def reset(self, env_idx, id: Optional[int] = None):

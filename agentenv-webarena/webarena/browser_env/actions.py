@@ -40,7 +40,7 @@ from browser_env.constants import (
     RolesType,
 )
 from browser_env.processors import ObservationProcessor
-
+import requests
 
 class ParsedPlaywrightCode(TypedDict):
     function_name: str
@@ -866,7 +866,7 @@ def execute_click_current(page: Page) -> None:
             locators = frame.locator("*:focus")
             if locators.count():
                 break
-    locators.click()
+    locators.click(timeout=100000)
 
 
 async def aexecute_click_current(page: APage) -> None:
@@ -879,7 +879,7 @@ async def aexecute_click_current(page: APage) -> None:
             locator_count = await locators.count()
             if locator_count:
                 break
-    await locators.click()
+    await locators.click(timeout=100000)
     await page.wait_for_load_state("load")
 
 
@@ -998,7 +998,7 @@ def execute_playwright_click(
     locator = locate(locator_code, page)
 
     # perform the action
-    locator.click(*pw_action_args, **pw_action_kwargs)
+    locator.click(timeout=100000, *pw_action_args, **pw_action_kwargs)
 
 
 async def aexecute_playwright_click(
@@ -1010,7 +1010,7 @@ async def aexecute_playwright_click(
     locator = await alocate(locator_code, page)
 
     # perform the action
-    await locator.click(*pw_action_args, **pw_action_kwargs)
+    await locator.click(timeout=100000, *pw_action_args, **pw_action_kwargs)
 
 
 def execute_playwright_hover(
@@ -1041,7 +1041,7 @@ def execute_playwright_type(
     locator = locate(locator_code, page)
     # perform the action
     pw_action_args = [text] + pw_action_args  # text is the first argument
-    locator.type(*pw_action_args, **pw_action_kwargs)
+    locator.type(timeout=10000, *pw_action_args, **pw_action_kwargs)
 
 
 async def aexecute_playwright_type(
@@ -1054,7 +1054,7 @@ async def aexecute_playwright_type(
     locator = await alocate(locator_code, page)
     # perform the action
     pw_action_args = [text] + pw_action_args  # text is the first argument
-    await locator.type(*pw_action_args, **pw_action_kwargs)
+    await locator.type(timeout=10000, *pw_action_args, **pw_action_kwargs)
 
 
 def execute_playwright_select_option(
@@ -1065,7 +1065,7 @@ def execute_playwright_select_option(
 ) -> None:
     locator = locate(locator_code, page)
     # perform the action
-    locator.select_option(*pw_action_args, **pw_action_kwargs)
+    locator.select_option(timeout=10000, *pw_action_args, **pw_action_kwargs)
 
 
 async def aexecute_playwright_select_option(
@@ -1076,7 +1076,7 @@ async def aexecute_playwright_select_option(
 ) -> None:
     locator = await alocate(locator_code, page)
     # perform the action
-    await locator.select_option(*pw_action_args, **pw_action_kwargs)
+    await locator.select_option(timeout=10000, *pw_action_args, **pw_action_kwargs)
 
 
 def execute_playwright_check(
@@ -1084,7 +1084,7 @@ def execute_playwright_check(
 ) -> None:
     locator = locate(locator_code, page)
     # perform the action
-    locator.check()
+    locator.check(timeout=10000)
 
 
 async def aexecute_playwright_check(
@@ -1092,7 +1092,7 @@ async def aexecute_playwright_check(
 ) -> None:
     locator = await alocate(locator_code, page)
     # perform the action
-    await locator.check()
+    await locator.check(timeout=10000)
 
 
 def execute_action(
@@ -1196,7 +1196,24 @@ def execute_action(
         case ActionTypes.GO_FORWARD:
             page.go_forward()
         case ActionTypes.GOTO_URL:
-            page.goto(action["url"])
+            res = requests.get(action["url"])
+            if res.status_code == 200:
+                ## Untested retry policy
+                max_retries = 5
+                for i in range(max_retries):
+                    try:
+                        page.goto(action["url"], timeout=100000)
+                        break
+                    except Exception as e:
+                        print(e)
+                        print(f"Retry {i+1}/{max_retries} in step for {action['url']}...")
+                        if i == max_retries - 1:
+                            # If we reach the maximum number of retries, raise an error
+                            raise ValueError(
+                                f"Failed to load the page after {max_retries} retries: {action['url']}"
+                            )
+            else:
+                raise ValueError(f"Failed to load the page: {action['url']}")
         case ActionTypes.PAGE_CLOSE:
             page.close()
             if len(browser_ctx.pages) > 0:
@@ -1326,7 +1343,7 @@ async def aexecute_action(
         case ActionTypes.GO_FORWARD:
             await page.go_forward()
         case ActionTypes.GOTO_URL:
-            await page.goto(action["url"])
+            await page.goto(action["url"], timeout=100000)
         case ActionTypes.PAGE_CLOSE:
             await page.close()
             if len(browser_ctx.pages) > 0:

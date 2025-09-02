@@ -158,6 +158,7 @@ def llm_fuzzy_match(pred: str, reference: str, question: str) -> float:
         {"role": "user", "content": message},
     ]
 
+    print("llm_fuzzy_match evaluate using openai api...")
     response = generate_from_openai_chat_completion(
         model="gpt-4-1106-preview",
         messages=messages,
@@ -166,6 +167,7 @@ def llm_fuzzy_match(pred: str, reference: str, question: str) -> float:
         top_p=1.0,
         context_length=0,
     ).lower()
+    print("llm_fuzzy_match evaluate using openai api finished.")
     if "partially correct" in response or "incorrect" in response:
         return 0.0
     else:
@@ -193,6 +195,7 @@ def llm_ua_match(pred: str, reference: str, question: str) -> float:
         {"role": "user", "content": message},
     ]
 
+    print("llm_ua_match evaluate using openai api...")
     response = generate_from_openai_chat_completion(
         model="gpt-4-1106-preview",
         messages=messages,
@@ -201,6 +204,7 @@ def llm_ua_match(pred: str, reference: str, question: str) -> float:
         top_p=1.0,
         context_length=0,
     ).lower()
+    print("llm_ua_match evaluate using openai api finished.")
     if "different" in response:
         return 0.0
     else:

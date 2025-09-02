@@ -1,10 +1,13 @@
 # AgentGym: Evolving Large Language Model-based Agents across Diverse Environments
+
 <p align="center">
   📃 <a href="https://arxiv.org/abs/2406.04151" target="_blank">Paper</a > • 🌐 <a href="https://agentgym.github.io/" target="_blank">Project Page</a > • 🤗 <a href="https://huggingface.co/datasets/AgentGym/AgentTraj-L" target="_blank">AgentTraj-L</a > • 🤗 <a href="https://huggingface.co/datasets/AgentGym/AgentEval" target="_blank">AgentEval</a > • 🤗 <a href="https://huggingface.co/AgentGym/AgentEvol-7B" target="_blank">Model (AgentEvol-7B)</a ><br>
 </p >
 
 ## 🔔 News
 
+- 👀 [2025/09/03] AgentGym now provides an interactive frontend for visualization. Researchers can replay and inspect full trajectories, step through agent decision-making, and analyze model behaviors more easily.
+- 🔧 [2025/09/03] We updated several environments to improve stability and robustness, with better support for large-scale parallel execution (e.g., parallel runs in WebArena). **Try it for RL!**
 - 🥳 [2024/06/07] Our paper is released on arXiv: [AgentGym: Evolving Large Language Model-based Agents across Diverse Environments](https://arxiv.org/abs/2406.04151) !
 - 🤖 [2024/06/06] Our model is available on Hugging Face: [AgentEvol-7B](https://huggingface.co/AgentGym/AgentEvol-7B).
 - 💥 [2024/06/06] Our trajectory set and benchmark are available on Hugging Face: [AgentTraj-L](https://huggingface.co/datasets/AgentGym/AgentTraj-L), [AgentEval](https://huggingface.co/datasets/AgentGym/AgentEval).
@@ -14,9 +17,9 @@
 
 ## 🌟 Introduction
 
-Building generalist agents that can handle diverse tasks and evolve themselves across different environments is a long-term goal in the AI community. Large language models (LLMs) are considered a promising foundation to build such agents due to their generalized capabilities. 
+Building generalist agents that can handle diverse tasks and evolve themselves across different environments is a long-term goal in the AI community. Large language models (LLMs) are considered a promising foundation to build such agents due to their generalized capabilities.
 
-**AgentGym** is a new framework featuring a variety of environments and tasks for broad, real-time, uniformat, and concurrent agent exploration. It is designed to help the community easily evaluate and develop generally-capable LLM-based agents. It also includes a high-quality trajectory set **AgentTraj** and a benchmark suite **AgentEval**. We also propose a novel method, **AgentEvol**, to investigate the potential of agent self-evolution beyond previously seen data across tasks and environments. Experimental results show that the evolved agents can achieve results comparable to SOTA models. 
+**AgentGym** is a new framework featuring a variety of environments and tasks for broad, real-time, uniformat, and concurrent agent exploration. It is designed to help the community easily evaluate and develop generally-capable LLM-based agents. It also includes a high-quality trajectory set **AgentTraj** and a benchmark suite **AgentEval**. We also propose a novel method, **AgentEvol**, to investigate the potential of agent self-evolution beyond previously seen data across tasks and environments. Experimental results show that the evolved agents can achieve results comparable to SOTA models.
 
 <div align=center><img src="./assets/agentgym.png" width="90%" /></div>
 
@@ -24,55 +27,51 @@ Building generalist agents that can handle diverse tasks and evolve themselves a
 
 AgentGym is a framework designed to help the community easily evaluate and develop generally-capable LLM-based agents. It features diverse interactive environments and tasks with a unified format, i.e., ReAct format. It supports real-time feedback and concurrency, and is easily scalable. It includes 14 environments across web navigating, text games, house-holding tasks, digital games, embodied tasks, tool-using and programming.
 
-| Environment | Traj | Eval | Original Repo                                                | EnvServer                                                    |
-| ----------- | ---- | ---- | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| WebShop     | 3930 | 200  | [WebShop-Repo](https://github.com/princeton-nlp/WebShop)     | [agentenv-webshop](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-webshop) |
-| WebArena    | 0    | 20   | [WebArena](https://github.com/web-arena-x/webarena)          | [agentenv-webarena](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-webarena) |
-| MAZE        | 215  | 25   | [MAZE-Repo](https://github.com/abdulhaim/LMRL-Gym)           | [agentenv-lmrlgym](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-lmrlgym) |
-| Wordle      | 955  | 25   | [Wordle-Repo](https://github.com/abdulhaim/LMRL-Gym)         | [agentenv-lmrlgym](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-lmrlgym) |
-| ALFWorld    | 2420 | 200  | [ALFWorld-Repo](https://github.com/alfworld/alfworld)        | [agentenv-alfworld](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-alfworld) |
-| SciWorld    | 2120 | 200  | [SciWrold-Repo](https://github.com/allenai/ScienceWorld)     | [agentenv-sciworld](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-sciworld) |
-| BabyAI      | 810  | 90   | [BabyAI-Repo](https://github.com/mila-iqia/babyai)           | [agentenv-babyai](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-babyai) |
-| TextCraft   | 374  | 100  | [TextCraft-Repo](https://github.com/archiki/ADaPT)           | [agentenv-textcraft](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-textcraft) |
-| Weather     | 311  | 20   | [Weather-Repo](https://github.com/hkust-nlp/AgentBoard)      | [agentenv-tool](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-tool) |
-| Movie       | 215  | 20   | [Movie-Repo](https://github.com/hkust-nlp/AgentBoard)        | [agentenv-tool](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-tool) |
-| Academia    | 0    | 20   | [Academia-Repo](https://github.com/hkust-nlp/AgentBoard)     | [agentenv-tool](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-tool) |
-| Sheet       | 0    | 20   | [Sheet-Repo](https://github.com/hkust-nlp/AgentBoard)        | [agentenv-tool](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-tool) |
-| TODOList    | 135  | 20   | [TODOList-Repo](https://github.com/hkust-nlp/AgentBoard)     | [agentenv-tool](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-tool) |
-| BIRD        | 3000 | 200  | [BIRD-Repo](https://github.com/AlibabaResearch/DAMO-ConvAI/tree/main/bird) | [agentenv-sqlgym](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-sqlgym) |
+| Environment | Traj | Eval | Original Repo                                                           | EnvServer                                                                            |
+| ----------- | ---- | ---- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| WebShop     | 3930 | 200  | [WebShop-Repo](https://github.com/princeton-nlp/WebShop)                   | [agentenv-webshop](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-webshop)     |
+| WebArena    | 0    | 20   | [WebArena](https://github.com/web-arena-x/webarena)                        | [agentenv-webarena](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-webarena)   |
+| MAZE        | 215  | 25   | [MAZE-Repo](https://github.com/abdulhaim/LMRL-Gym)                         | [agentenv-lmrlgym](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-lmrlgym)     |
+| Wordle      | 955  | 25   | [Wordle-Repo](https://github.com/abdulhaim/LMRL-Gym)                       | [agentenv-lmrlgym](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-lmrlgym)     |
+| ALFWorld    | 2420 | 200  | [ALFWorld-Repo](https://github.com/alfworld/alfworld)                      | [agentenv-alfworld](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-alfworld)   |
+| SciWorld    | 2120 | 200  | [SciWrold-Repo](https://github.com/allenai/ScienceWorld)                   | [agentenv-sciworld](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-sciworld)   |
+| BabyAI      | 810  | 90   | [BabyAI-Repo](https://github.com/mila-iqia/babyai)                         | [agentenv-babyai](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-babyai)       |
+| TextCraft   | 374  | 100  | [TextCraft-Repo](https://github.com/archiki/ADaPT)                         | [agentenv-textcraft](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-textcraft) |
+| Weather     | 311  | 20   | [Weather-Repo](https://github.com/hkust-nlp/AgentBoard)                    | [agentenv-tool](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-tool)           |
+| Movie       | 215  | 20   | [Movie-Repo](https://github.com/hkust-nlp/AgentBoard)                      | [agentenv-tool](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-tool)           |
+| Academia    | 0    | 20   | [Academia-Repo](https://github.com/hkust-nlp/AgentBoard)                   | [agentenv-tool](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-tool)           |
+| Sheet       | 0    | 20   | [Sheet-Repo](https://github.com/hkust-nlp/AgentBoard)                      | [agentenv-tool](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-tool)           |
+| TODOList    | 135  | 20   | [TODOList-Repo](https://github.com/hkust-nlp/AgentBoard)                   | [agentenv-tool](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-tool)           |
+| BIRD        | 3000 | 200  | [BIRD-Repo](https://github.com/AlibabaResearch/DAMO-ConvAI/tree/main/bird) | [agentenv-sqlgym](https://github.com/WooooDyy/AgentGym/tree/main/agentenv-sqlgym)       |
 
 ### Platform
 
-The platform architecture of AgentGym is illustrated in the following figure. In AgentGym, different environments are deployed on different servers or ports and provide encapsulated HTTP services externally. This decouples the environments from other parts. 
+The platform architecture of AgentGym is illustrated in the following figure. In AgentGym, different environments are deployed on different servers or ports and provide encapsulated HTTP services externally. This decouples the environments from other parts.
 
-These services include APIs such as `/createEnv` to create an environment, `/observation` to get the current observation from the environment, `/available_actions` to get the currently available actions, `/step` to perform an action, and `/reset` to reset the environment. 
+These services include APIs such as `/createEnv` to create an environment, `/observation` to get the current observation from the environment, `/available_actions` to get the currently available actions, `/step` to perform an action, and `/reset` to reset the environment.
 
 We have implemented 14 types of environments, and **developers can easily develop new environments and add them to AgentGym by encapsulating the aforementioned interfaces**. EnvClients have the responsibility of receiving services provided by the server and encapsulating them into functions for user calls. AgentController is our core component that connects the agent and the environment. It is responsible for evaluating the agent, collecting data, and training the agent.
 
 <div align=center><img src="./assets/platform.png" width="60%" /></div>
 
-
-
 ### Benchmark: AgentEval
 
 The AgentEval benchmark is on Hugging Face: [AgentGym/AgentEval](https://huggingface.co/datasets/AgentGym/AgentEval).
 
-Here is an example: 
+Here is an example:
 
 ```json
-{	
+{
   "conversations": null, 
   "item_id": "webshop_5238"
 }
 ```
 
-
-
 ### Trajectory Set: AgentTraj
 
-The trajectory set AgentTraj-L is available on Hugging Face: [AgentGym/AgentTraj-L](https://huggingface.co/datasets/AgentGym/AgentTraj-L). 
+The trajectory set AgentTraj-L is available on Hugging Face: [AgentGym/AgentTraj-L](https://huggingface.co/datasets/AgentGym/AgentTraj-L).
 
-Here is an example: 
+Here is an example:
 
 ```json
     {
@@ -108,10 +107,6 @@ Here is an example:
     },
 ```
 
-
-
-
-
 ## 🛠 Usage & Quick Start
 
 This project contains the `agentenv` python package and the integrated environments.
@@ -136,13 +131,12 @@ pip install -e .
 
 Depending on which environments you want to use, `cd` into the corresponding `agentenv-*` folder and follow the `README.md` inside.
 
-
-
 ### Tutorials
 
 - Evaluation: [01-evaluation](https://github.com/WooooDyy/AgentGym/blob/main/docs/tutorials/en/01-evaluation.md)
 - Behavioral Cloning: [02-behavioral-cloning](https://github.com/WooooDyy/AgentGym/blob/main/docs/tutorials/en/02-behavioral-cloning.md)
 - AgentEvol: [03-AgentEvol](https://github.com/WooooDyy/AgentGym/blob/main/docs/tutorials/en/03-AgentEvol.md)
+- Env Visualization: [04-Env-Visualization](https://github.com/WooooDyy/AgentGym/blob/main/docs/tutorials/en/04-Env-Visualization.md)
 
 ### Examples
 
@@ -153,9 +147,11 @@ Depending on which environments you want to use, `cd` into the corresponding `ag
 <div align=center><img src="./assets/main_results.png" width="90%" /></div>
 
 ## 📧 Contact
+
 - zhxi22@m.fudan.edu.cn
 
 ## 🔖 Citation
+
 ```
 @misc{xi2024agentgym,
       title={AgentGym: Evolving Large Language Model-based Agents across Diverse Environments}, 
@@ -166,4 +162,3 @@ Depending on which environments you want to use, `cd` into the corresponding `ag
       primaryClass={cs.AI}
 }
 ```
-

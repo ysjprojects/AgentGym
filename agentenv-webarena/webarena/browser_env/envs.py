@@ -157,7 +157,19 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
                 if self.text_observation_type == "accessibility_tree":
                     client.send("Accessibility.enable")
                 page.client = client  # type: ignore # TODO[shuyanzh], fix this hackey client
-                page.goto(url)
+                
+                # Retry at most 5 times 
+                max_retries = 5
+                for i in range(max_retries):
+                    try:
+                        page.goto(url, timeout=100000)
+                        break
+                    except Exception as e:
+                        print(e)
+                        time.sleep(1)
+                        if i == max_retries - 1:
+                            raise TimeoutError(f"Failed to load {url} after {max_retries} retries.")
+            
             # set the first page as the current page
             self.page = self.context.pages[0]
             self.page.bring_to_front()
@@ -169,7 +181,12 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
             self.page.client = client  # type: ignore
 
     def get_page_client(self, page: Page) -> CDPSession:
-        return page.client  # type: ignore
+        if hasattr(page, "client"):
+            return page.client  # type: ignore
+        else:
+            client = page.context.new_cdp_session(page)
+            page.client = client  # type: ignore
+            return client
 
     def _get_obs(self) -> dict[str, Observation]:
         obs = self.observation_handler.get_observation(
@@ -200,11 +217,17 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
         if options is not None and "config_file" in options:
             config_file = Path(options["config_file"])
             if config_file.exists():
-                self.setup(config_file=config_file)
+                try:
+                    self.setup(config_file=config_file)
+                except Exception as e:
+                    raise e
             else:
                 raise ValueError(f"Config file {config_file} does not exist.")
         else:
-            self.setup()
+            try:
+                self.setup()
+            except Exception as e:
+                raise e
         self.reset_finished = True
 
         if self.sleep_after_execution > 0:

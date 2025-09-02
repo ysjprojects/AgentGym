@@ -248,22 +248,30 @@ class CraftingTree:
     def print_recipe(self, recipe: Recipe):
         print(recipe.recipe_str)
 
-    def traverse_recipe_tree(self, item_name: str, visited_names: Set[str]):
-        if item_name in visited_names:
-            print("Cycle detected for {}: {}".format(item_name, visited_names))
+    def traverse_recipe_tree(self, item_name: str, visited: Set[str] = None) -> List[Recipe]:
+        # Init
+        visited = visited or set()
+        if item_name in visited:
+            print(f"Detected cycle at {item_name}, path: {visited}")
             return []
-        recipes = (
+        
+        current_recipes = (
             self.itemid_recipes.get(item_name) or self.tag_recipes.get(item_name) or []
         )
-        for recipe in recipes:
-            new_visited_names = deepcopy(visited_names)
-            for input_itemtag_count in recipe.input_items:
-                input_item_name = input_itemtag_count.item_tag.name
-                new_visited_names.add(item_name)
-                recipes.extend(
-                    self.traverse_recipe_tree(input_item_name, new_visited_names)
+        new_visited = visited | {item_name}
+        collected = []
+        for recipe in current_recipes:
+            collected.append(recipe)
+        for recipe in current_recipes:
+            for input_item in recipe.input_items:
+                input_name = input_item.item_tag.name
+                sub_recipes = self.traverse_recipe_tree(
+                    input_name, 
+                    new_visited.copy(), # pass a copy  
                 )
-        return recipes
+                collected.extend(sub_recipes)
+
+        return collected
 
     def collect_item_uses(self):
         item_uses = {}

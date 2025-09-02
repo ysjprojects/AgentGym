@@ -44,7 +44,7 @@ def is_expired(
     browser = playwright.chromium.launch(headless=True, slow_mo=SLOW_MO)
     context = browser.new_context(storage_state=storage_state)
     page = context.new_page()
-    page.goto(url)
+    page.goto(url, timeout=100000)
     time.sleep(1)
     d_url = page.url
     content = page.content()

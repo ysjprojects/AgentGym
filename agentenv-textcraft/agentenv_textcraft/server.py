@@ -1,9 +1,21 @@
 from fastapi import FastAPI
+import os
 from .model import *
 from .env_wrapper import server
 
 app = FastAPI()
 
+VISUAL = os.environ.get("VISUAL", "false").lower() == "true"
+if VISUAL:
+    print("Running in VISUAL mode")
+    from fastapi.middleware.cors import CORSMiddleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 @app.get("/")
 def hello():
@@ -46,3 +58,8 @@ def get_goal(id: int):
 @app.get("/detail")
 def get_detailed_info(id: int):
     return server.get_detailed_info(id)
+
+@app.post("/close")
+def close(body: CloseRequestBody):
+    print(f"/close {body.id}")
+    return server.close(body.id)

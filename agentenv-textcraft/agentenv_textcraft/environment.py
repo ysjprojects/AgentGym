@@ -195,4 +195,9 @@ class TextCraftEnv(gym.Env[str, str]):
         pass
 
     def close(self):
-        pass
+        super().close()
+        for attr in ['inventory', 'action_regexes', 'count_regex', 'commands', 'goal']:
+            if hasattr(self, attr):
+                if isinstance(getattr(self, attr), (dict, list, set)):
+                    getattr(self, attr).clear()
+                delattr(self, attr)

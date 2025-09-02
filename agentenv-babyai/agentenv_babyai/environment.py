@@ -4,6 +4,12 @@ import numpy as np
 import gymnasium
 import matplotlib.pyplot as plt
 
+import base64
+import io
+import os
+from PIL import Image
+import numpy as np
+import threading
 class BabyAI(gym.Env):
     def __init__(self, 
                  max_episode_steps=50, 
@@ -39,17 +45,24 @@ class BabyAI(gym.Env):
         
         
     def render(self, mode='human'):
-        if not os.path.exists(self.render_path):
-            os.makedirs(self.render_path)  
-        
-        rgb_img = self.env.unwrapped.get_frame(
-            highlight=self.env.unwrapped.highlight, tile_size=self.env.unwrapped.tile_size
-        )
-        
-        output_path = os.path.join(self.render_path, f"step_{self.steps}.png")
-        plt.imsave(output_path, rgb_img)
-        
-        return output_path
+        try:
+            rgb_img = self.env.unwrapped.get_frame(
+                highlight=self.env.unwrapped.highlight, 
+                tile_size=self.env.unwrapped.tile_size
+            )
+            
+            if isinstance(rgb_img, np.ndarray):
+                image = Image.fromarray(rgb_img.astype('uint8'))
+            else:
+                image = rgb_img
+                
+            buffer = io.BytesIO()
+            image.save(buffer, format='PNG')
+            img_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            
+            return f"data:image/png;base64,{img_base64}"
+        except Exception as e:
+            return {"error": str(e)}
         
     
     def _get_info(self):
@@ -787,13 +800,17 @@ class BabyAIEnv:
         self._max_id = 0
         self.env = {}
         self.info = {}
+        self.ls = []
         self.games = []
+        self._lock = threading.Lock()
 
     def create(self):
         try:
-            idx = self._max_id
+            with self._lock:
+                idx = self._max_id
+                self._max_id += 1
             self.info[idx] = {"deleted": False, "done": False}
-            self._max_id += 1
+            self.ls.append(idx)
             return {"id": idx}
         except Exception as e:
             return {"error": str(e)}
@@ -818,6 +835,42 @@ class BabyAIEnv:
             return payload
         except Exception as e:
             return {"error": str(e)}
+        
+    def observe(self, idx: int):
+        """Get current observation for an environment"""
+        try:
+            self._check_id(idx)
+            print(f"Current environment info: {self.info[idx]}")
+            
+            # Return current state information
+            if idx in self.env and self.env[idx] is not None:
+                action_space = "\nAvailable actions: ["
+                for action in self.env[idx]._get_action_space():
+                    action_space += "\"" + action + "\", "
+                if action_space[-1] != "[":
+                    action_space = action_space[:-2]
+                    action_space += "]"
+                
+                payload = {
+                    "observation": "Your goal: " + self.env[idx]._get_goal() + "\n" + self.env[idx]._get_obs() + action_space,
+                    "reward": self.env[idx].reward,
+                    "score": self.info[idx].get("score", 0),
+                    "done": self.env[idx]._is_done(),
+                    "deleted": self.info[idx]["deleted"]
+                }
+                return payload
+            else:
+                # Environment not initialized yet, return basic info
+                return {
+                    "observation": "Environment not initialized",
+                    "reward": 0,
+                    "score": 0,
+                    "done": False,
+                    "deleted": self.info[idx]["deleted"]
+                }
+        except Exception as e:
+            return {"error": str(e)}
+
 
     def reset(self, idx: int, data_idx: int):
         try:
@@ -849,6 +902,36 @@ class BabyAIEnv:
             raise ValueError(f"The task with environment {idx} has been deleted.")
         if not is_reset and self.info[idx]["done"]:
             raise ValueError(f"The task with environment {idx} has finished.")
+        
+    def __del__(self):
+        for idx in self.ls:
+            self.env[idx].close()
+            print(f"-----Env {idx} closed-----")
 
+    def close(self,id):
+        try:
+            self.ls.remove(id)
+            self.env[id].close() 
+            del self.info[id] 
+            del self.env[id] 
+            import gc
+            gc.collect()
+            print(f"-------Env {id} closed--------")
+            return True
+        except KeyError:
+            print(f"--------Env {id} not exist--------")
+            return False
+        except Exception as e:
+            print(f"Error while closing Env {id}: {e}")
+            return False
+        
+    def render(self, idx: int):
+        # Only used in visualization mode
+        try:
+            self._check_id(idx)
+            img = self.env[idx].render(mode='rgb_array')
+            return img
+        except Exception as e:
+            return {"error": str(e)}
 
 server = BabyAIEnv()

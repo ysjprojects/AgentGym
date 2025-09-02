@@ -1,6 +1,6 @@
 import os
 import json
-
+import threading
 from .environment import SingleAlfredTWEnv
 from .utils import load_config, process_ob
 
@@ -20,10 +20,12 @@ class ALFWorld_Wrapper:
         self.config = load_config(self.config_path)
 
         self._max_id = 0
+        self.ls = []
         self.env = {}  # dict[id, env_item]
         self.env_init = {}  # dict[id, env_item]
         self.info = {}  # dict[id, env_info]
         self.games = []  # list[game_file]
+        self._lock = threading.Lock()
         
         train_games_root = os.path.join(
             os.environ["ALFWORLD_DATA"], "json_2.1.1", "train"
@@ -72,15 +74,22 @@ class ALFWorld_Wrapper:
     def create(self):
         try:
             # TODO extend to other kinds of environments
-            idx = self._max_id
+            with self._lock:
+                idx = self._max_id
+                self._max_id += 1
             self.env[idx] = SingleAlfredTWEnv(self.config)
             self.info[idx] = {"done": False, "reward": 0, "deleted": False}
             print(f"-------Env {idx} created--------")
-            self._max_id += 1
+            self.ls.append(idx)
             payload = {"id": idx}
         except Exception as e:
             payload = {"error": f"{e}"}
         return payload
+    
+    def __del__(self):
+        for idx in self.ls:
+            self.env_init[idx].close()
+            print(f"-------Env {idx} closed--------")
 
     def step(self, idx: int, action: str):
         try:

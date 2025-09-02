@@ -6,7 +6,6 @@ This article introduces how to evaluate LLM-based agents on WebShop task via Age
 
 Firstly, please install `agentenv` package. You can refer to the [`README.md`](/README.md) in the root path of this project. Then, you can launch the WebShop environment server through the following instructions.
 
-
 ```bash
 # Change to the agentenv-webshop directory
 cd agentenv-webshop
@@ -40,7 +39,7 @@ webshop --port 36001
 
 The `webshop` Conda should only be used to launch the WebShop environment server. Other code should be executed in your own Conda environment, where the `agentenv` package have been installed.
 
-Please refer to `examples/basic/eval_agentlm_webshop.py`.
+Please refer to `examples/basic/base_eval.py` or  `examples/basic/openai_eval.py`.
 
 ```python
 # Evaluate AgentLM-7B on WebShop task.
@@ -104,7 +103,6 @@ This script evaluate the `THUDM/AgentLM-7b` model on tasks with id from 0 to 199
 ## Evaluation on Multi-GPU
 
 `agentenv/utils/distributed_eval_task.py` evaluates the models on multi-gpu. Please refer to `agentenv/examples/distributed_eval_scripts/distributed_eval_alfworld.sh`.
-
 
 To use the script, you need to prepare an inference_file with the ids of the data. This is the required format:
 

@@ -3,6 +3,9 @@ import re
 from collections import defaultdict
 from typing import Any, TypedDict, Union
 
+import base64
+import io
+from PIL import Image
 import numpy as np
 import numpy.typing as npt
 from gymnasium import spaces
@@ -662,6 +665,16 @@ class ImageObservationProcessor(ObservationProcessor):
         except:
             page.wait_for_event("load")
             screenshot = png_bytes_to_numpy(page.screenshot())
+        
+        if isinstance(screenshot, np.ndarray):
+            image = Image.fromarray(screenshot.astype('uint8'))
+        else:
+            image = screenshot
+            
+        buffer = io.BytesIO()
+        image.save(buffer, format='PNG')
+        img_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        self.meta_data = f"data:image/png;base64,{img_base64}"
         return screenshot
 
 

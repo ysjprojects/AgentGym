@@ -5,7 +5,8 @@ import re
 import requests
 from requests.exceptions import RequestException
 
-from agentenv.controller import BaseEnvClient, BaseTask, ConversationMessage, StepOutput
+from agentenv.controller import BaseEnvClient, BaseTask
+from agentenv.controller.types import ConversationMessage, StepOutput
 
 
 class TextCraftEnvClient(BaseEnvClient):
@@ -14,7 +15,7 @@ class TextCraftEnvClient(BaseEnvClient):
             {
                 "from": "human",
                 "loss": None,
-                "value": 'You are given few useful crafting recipes to craft items in Minecraft. Crafting commands are of the format "craft [target object] using [input ingredients]".\nEvery round I will give you an observation, you have to respond an action based on the state and instruction. You can "get" an object (ingredients) from the inventory or the environment, look-up the game inventory by "inventory", or "craft" (target) using any of the crafting commands. You can use ONLY these crafting commands provided, do not use your own crafting commands. However, if the crafting command uses a generic ingredient like "planks", you can use special types of the same ingredient e.g. "dark oak planks" in the command instead.\nYour response should use the following format:\n\nThought:\n ... \n\nAction:\n ... ',
+                "value": 'You are given few useful crafting recipes to craft items in Minecraft. Crafting commands are of the format "craft [target object] using [input ingredients]".\nEvery round I will give you an observation, you have to respond an action based on the state and instruction. You can "get" an object (ingredients) from the inventory or the environment, look-up the game inventory by "inventory", or "craft" (target) using any of the crafting commands.\nYour output must strictly follow this format:"Thought:\nyour thoughts.\n\nAction:\nyour next action"\n\nReminder: \n1. Always specify the quantity when using "get" and "craft" commands. - Example of get: get 1 lapis lazuli - Example1 of craft: craft 1 blue dye using 1 lapis lazuli - Example2 of craft: craft 1 golden carrot using 8 gold nugget, 1 carrot\n2. When using "get" command, do not specify whether the item comes from the inventory or the environment.\n3. You can use ONLY crafting commands provided, do not use your own crafting commands. However, if the crafting command uses a generic ingredient like "planks", you can use special types of the same ingredient e.g. "dark oak planks" in the command instead.\n\n',
             }
         ),
         ConversationMessage(
@@ -50,7 +51,6 @@ class TextCraftEnvClient(BaseEnvClient):
             raise RequestException(f"Failed to create environment: {ok}")
 
         ok = ok.json()
-        print(ok)
         self.env_id = ok["id"]
         self.info = {
             "observation": ok["observation"],
@@ -83,11 +83,17 @@ class TextCraftEnvClient(BaseEnvClient):
         return self.info["observation"]
 
     def step(self, action: str) -> StepOutput:
-        action = action.split("Instruction:")[0].split("Action:")[-1]
+        action_matches = re.findall(r"Action:\s*(.*?)(?=\n|$)", action, re.DOTALL)
+        if len(action_matches) > 1:
+            return StepOutput(
+                state="Error: Only one 'Action' is allowed per response. Please adjust your response.",
+                reward=0,
+                done=False,
+            )
+        action = action_matches[-1] if action_matches else ""
         action = re.sub(r"[^A-Za-z0-9, ]+", "", action)
         action = " ".join(action.split()).strip()
         response = self._post("step", {"action": action})
-        print(response)
         self.info = {
             "observation": response["observation"],
             "reward": response["reward"],
@@ -109,7 +115,10 @@ class TextCraftEnvClient(BaseEnvClient):
             }
         )
         return response
-
+    
+    def close(self):
+        response = self._post("close",{})
+        return response
 
 class TextCraftTask(BaseTask):
     env_client_cls = TextCraftEnvClient

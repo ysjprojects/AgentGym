@@ -1,7 +1,7 @@
 """
 Entrypoint for the webarena agent environment.
 """
-
+import uvicorn
 from gunicorn.app.base import BaseApplication
 import argparse
 
@@ -40,4 +40,5 @@ def launch():
         "reload": True,
     }
 
-    CustomGunicornApp(app, options).run()
+    # CustomGunicornApp(app, options).run()
+    uvicorn.run(app, host=args.host, port=args.port, workers=args.workers)

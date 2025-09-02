@@ -1,16 +1,13 @@
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass
 
-
-@dataclass
-class StepOutput:
-    state: str
-    reward: float
-    done: bool
+from .types import ActionFormat, ConversationMessage, StepOutput
 
 
 class BaseEnvClient(metaclass=ABCMeta):
-    conversation_start = ()
+    _conversation_start: dict[ActionFormat, tuple[ConversationMessage]]
+
+    def __init__(self, action_format: ActionFormat = "react") -> None:
+        self.action_format = ActionFormat(action_format)
 
     @abstractmethod
     def __len__(self) -> int:
