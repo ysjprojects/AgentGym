@@ -137,6 +137,7 @@ Depending on which environments you want to use, `cd` into the corresponding `ag
 - Behavioral Cloning: [02-behavioral-cloning](https://github.com/WooooDyy/AgentGym/blob/main/docs/tutorials/en/02-behavioral-cloning.md)
 - AgentEvol: [03-AgentEvol](https://github.com/WooooDyy/AgentGym/blob/main/docs/tutorials/en/03-AgentEvol.md)
 - Env Visualization: [04-Env-Visualization](https://github.com/WooooDyy/AgentGym/blob/main/docs/tutorials/en/04-Env-Visualization.md)
+- 2nd Development: [05-2nd-Development](https://github.com/WooooDyy/AgentGym/blob/main/docs/tutorials/en/05-2nd-Development.md)
 
 ### Examples
 
