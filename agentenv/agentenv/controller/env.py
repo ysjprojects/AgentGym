@@ -2,6 +2,9 @@ from abc import ABCMeta, abstractmethod
 
 from .types import ActionFormat, ConversationMessage, StepOutput
 
+# Each environment client class inherits BaseEnvClient
+# Must implement: __init__, observe, step, reset
+# Define conversation_start as initial prompt context
 
 class BaseEnvClient(metaclass=ABCMeta):
     _conversation_start: dict[ActionFormat, tuple[ConversationMessage]]
